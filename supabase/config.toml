@@ -1,1 +1,10 @@
 project_id = "ykdbrlmjdinofgjgjgff"
+
+[functions.customers-create-or-update]
+verify_jwt = false
+
+[functions.issues-create]
+verify_jwt = false
+
+[functions.ai-callback]
+verify_jwt = false
