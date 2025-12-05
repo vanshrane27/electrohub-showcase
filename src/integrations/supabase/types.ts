@@ -14,7 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          preferred_date: string
+          preferred_time: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          preferred_date: string
+          preferred_time: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          preferred_date?: string
+          preferred_time?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string | null
+          first_name: string
+          history: Json | null
+          id: string
+          last_name: string
+          latest_message: string | null
+          phone: string
+        }
+        Insert: {
+          created_at?: string | null
+          first_name: string
+          history?: Json | null
+          id?: string
+          last_name: string
+          latest_message?: string | null
+          phone: string
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string
+          history?: Json | null
+          id?: string
+          last_name?: string
+          latest_message?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
+      issues: {
+        Row: {
+          category: string
+          created_at: string | null
+          customer_id: string
+          description: string
+          id: string
+          status: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          customer_id: string
+          description: string
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          customer_id?: string
+          description?: string
+          id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issues_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          product_name: string
+          serial_number: string
+          warranty_end: string
+          warranty_start: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          product_name: string
+          serial_number: string
+          warranty_end: string
+          warranty_start: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          product_name?: string
+          serial_number?: string
+          warranty_end?: string
+          warranty_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
