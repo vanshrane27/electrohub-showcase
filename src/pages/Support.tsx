@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { 
   Shield, Download, HelpCircle, MessageSquare, 
-  ChevronDown, ChevronUp, Search, CheckCircle 
+  ChevronDown, ChevronUp, Search, CheckCircle, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -54,14 +55,44 @@ export default function Support() {
     phone: '',
     message: '',
   });
+  const [submittingWarranty, setSubmittingWarranty] = useState(false);
+  const [submittingContact, setSubmittingContact] = useState(false);
 
-  const handleWarrantyRegister = (e: React.FormEvent) => {
+  const handleWarrantyRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: 'Warranty Registered!',
-      description: 'Your product warranty has been successfully registered.',
-    });
-    setWarrantyForm({ productSerial: '', purchaseDate: '', email: '', name: '' });
+    setSubmittingWarranty(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          action: 'addWarranty',
+          data: warrantyForm,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        toast({
+          title: 'Warranty Registered!',
+          description: 'Your product warranty has been successfully registered.',
+        });
+        setWarrantyForm({ productSerial: '', purchaseDate: '', email: '', name: '' });
+      } else {
+        throw new Error(data.error || 'Failed to register warranty');
+      }
+    } catch (error) {
+      console.error('Error registering warranty:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to register warranty. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingWarranty(false);
+    }
   };
 
   const handleWarrantyCheck = (e: React.FormEvent) => {
@@ -73,13 +104,41 @@ export default function Support() {
     });
   };
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: 'Message Sent!',
-      description: 'Our support team will contact you within 24 hours.',
-    });
-    setContactForm({ firstName: '', lastName: '', phone: '', message: '' });
+    setSubmittingContact(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          action: 'addContactForm',
+          data: contactForm,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        toast({
+          title: 'Message Sent!',
+          description: 'Our support team will contact you within 24 hours.',
+        });
+        setContactForm({ firstName: '', lastName: '', phone: '', message: '' });
+      } else {
+        throw new Error(data.error || 'Failed to submit form');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingContact(false);
+    }
   };
 
   return (
@@ -149,8 +208,15 @@ export default function Support() {
                       className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                  <Button type="submit" className="w-full">
-                    Register Warranty
+                  <Button type="submit" className="w-full" disabled={submittingWarranty}>
+                    {submittingWarranty ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Registering...
+                      </>
+                    ) : (
+                      'Register Warranty'
+                    )}
                   </Button>
                 </form>
               </div>
@@ -315,8 +381,15 @@ export default function Support() {
                     className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   />
                 </div>
-                <Button type="submit" variant="hero">
-                  Send Message
+                <Button type="submit" variant="hero" disabled={submittingContact}>
+                  {submittingContact ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Message'
+                  )}
                 </Button>
               </form>
             </div>
