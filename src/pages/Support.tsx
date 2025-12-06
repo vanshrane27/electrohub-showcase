@@ -63,26 +63,26 @@ export default function Support() {
     setSubmittingWarranty(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          action: 'addWarranty',
-          data: warrantyForm,
-        },
-      });
+      const { data, error } = await supabase
+        .from('warranties')
+        .insert({
+          serial_number: warrantyForm.productSerial,
+          purchase_date: warrantyForm.purchaseDate,
+          name: warrantyForm.name,
+          email: warrantyForm.email,
+        })
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
 
-      if (data.success) {
         toast({
           title: 'Warranty Registered!',
           description: 'Your product warranty has been successfully registered.',
         });
         setWarrantyForm({ productSerial: '', purchaseDate: '', email: '', name: '' });
-      } else {
-        throw new Error(data.error || 'Failed to register warranty');
-      }
     } catch (error) {
       console.error('Error registering warranty:', error);
       toast({
@@ -95,13 +95,64 @@ export default function Support() {
     }
   };
 
-  const handleWarrantyCheck = (e: React.FormEvent) => {
+  const handleWarrantyCheck = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate warranty check
+    
+    if (!warrantyCheckSerial.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a serial number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('warranties')
+        .select('*')
+        .eq('serial_number', warrantyCheckSerial)
+        .order('registered_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        // No warranty found
+        setWarrantyStatus({
+          valid: false,
+          expiry: '',
+        });
+        toast({
+          title: 'Warranty Not Found',
+          description: 'No warranty found for this serial number.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Calculate warranty expiry (assuming 1 year warranty from purchase date)
+      const purchaseDate = new Date(data.purchase_date);
+      const expiryDate = new Date(purchaseDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      const today = new Date();
+      const isValid = expiryDate > today;
+
     setWarrantyStatus({
-      valid: true,
-      expiry: '2027-01-15',
+        valid: isValid,
+        expiry: expiryDate.toISOString().split('T')[0],
+      });
+    } catch (error) {
+      console.error('Error checking warranty:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to check warranty status. Please try again.',
+        variant: 'destructive',
     });
+    }
   };
 
   const handleContactSubmit = async (e: React.FormEvent) => {
@@ -109,26 +160,54 @@ export default function Support() {
     setSubmittingContact(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          action: 'addContactForm',
-          data: contactForm,
-        },
-      });
+      // 1. Store in Supabase
+      const { data: supabaseData, error: supabaseError } = await supabase
+        .from('contact_forms')
+        .insert({
+          first_name: contactForm.firstName,
+          last_name: contactForm.lastName,
+          phone: contactForm.phone,
+          message: contactForm.message,
+          status: 'New',
+        })
+        .select()
+        .single();
 
-      if (error) {
-        throw error;
+      if (supabaseError) {
+        throw supabaseError;
       }
 
-      if (data.success) {
+      // 2. Trigger n8n webhook for Retell AI call
+      const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+      if (n8nWebhookUrl) {
+        try {
+          const n8nResponse = await fetch(n8nWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              first_name: contactForm.firstName,
+              last_name: contactForm.lastName,
+              phone: contactForm.phone,
+              message: contactForm.message,
+            }),
+      });
+
+          if (!n8nResponse.ok) {
+            console.warn('N8N webhook failed, but data saved in Supabase');
+          }
+        } catch (webhookError) {
+          // Don't fail the form submission if webhook fails
+          console.warn('Failed to trigger n8n webhook:', webhookError);
+        }
+      }
+
         toast({
           title: 'Message Sent!',
           description: 'Our support team will contact you within 24 hours.',
         });
         setContactForm({ firstName: '', lastName: '', phone: '', message: '' });
-      } else {
-        throw new Error(data.error || 'Failed to submit form');
-      }
     } catch (error) {
       console.error('Error submitting contact form:', error);
       toast({

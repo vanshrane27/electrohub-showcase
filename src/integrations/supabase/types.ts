@@ -152,6 +152,87 @@ export type Database = {
           },
         ]
       }
+      warranties: {
+        Row: {
+          id: string
+          serial_number: string
+          purchase_date: string
+          name: string
+          email: string
+          registered_at: string | null
+          created_at: string | null
+          retell_call_id: string | null
+          retell_status: string | null
+          retell_called_at: string | null
+        }
+        Insert: {
+          id?: string
+          serial_number: string
+          purchase_date: string
+          name: string
+          email: string
+          registered_at?: string | null
+          created_at?: string | null
+          retell_call_id?: string | null
+          retell_status?: string | null
+          retell_called_at?: string | null
+        }
+        Update: {
+          id?: string
+          serial_number?: string
+          purchase_date?: string
+          name?: string
+          email?: string
+          registered_at?: string | null
+          created_at?: string | null
+          retell_call_id?: string | null
+          retell_status?: string | null
+          retell_called_at?: string | null
+        }
+        Relationships: []
+      }
+      contact_forms: {
+        Row: {
+          id: string
+          first_name: string
+          last_name: string
+          phone: string
+          message: string
+          status: string | null
+          submitted_at: string | null
+          created_at: string | null
+          retell_call_id: string | null
+          retell_status: string | null
+          retell_called_at: string | null
+        }
+        Insert: {
+          id?: string
+          first_name: string
+          last_name: string
+          phone: string
+          message: string
+          status?: string | null
+          submitted_at?: string | null
+          created_at?: string | null
+          retell_call_id?: string | null
+          retell_status?: string | null
+          retell_called_at?: string | null
+        }
+        Update: {
+          id?: string
+          first_name?: string
+          last_name?: string
+          phone?: string
+          message?: string
+          status?: string | null
+          submitted_at?: string | null
+          created_at?: string | null
+          retell_call_id?: string | null
+          retell_status?: string | null
+          retell_called_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

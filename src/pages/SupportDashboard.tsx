@@ -54,29 +54,55 @@ export default function SupportDashboard() {
   const fetchData = async () => {
     try {
       setRefreshing(true);
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: { action: 'getData' },
-      });
+      
+      // Fetch warranties
+      const { data: warrantiesData, error: warrantiesError } = await supabase
+        .from('warranties')
+        .select('*')
+        .order('registered_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch data from Google Sheets',
-          variant: 'destructive',
-        });
-        return;
+      if (warrantiesError) {
+        throw warrantiesError;
       }
 
-      if (data.success) {
-        setWarranties(data.warranties || []);
-        setContactForms(data.contactForms || []);
+      // Fetch contact forms
+      const { data: contactFormsData, error: contactFormsError } = await supabase
+        .from('contact_forms')
+        .select('*')
+        .order('submitted_at', { ascending: false });
+
+      if (contactFormsError) {
+        throw contactFormsError;
       }
+
+      // Transform warranties data to match the interface
+      const transformedWarranties: WarrantyRecord[] = (warrantiesData || []).map(w => ({
+        id: w.id,
+        serialNumber: w.serial_number,
+        purchaseDate: w.purchase_date,
+        name: w.name,
+        email: w.email,
+        registeredAt: w.registered_at || w.created_at || '',
+      }));
+
+      // Transform contact forms data to match the interface
+      const transformedContactForms: ContactFormRecord[] = (contactFormsData || []).map(cf => ({
+        id: cf.id,
+        firstName: cf.first_name,
+        lastName: cf.last_name,
+        phone: cf.phone,
+        message: cf.message,
+        submittedAt: cf.submitted_at || cf.created_at || '',
+        status: cf.status || 'New',
+      }));
+
+      setWarranties(transformedWarranties);
+      setContactForms(transformedContactForms);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to connect to the server',
+        description: 'Failed to fetch data from Supabase',
         variant: 'destructive',
       });
     } finally {
