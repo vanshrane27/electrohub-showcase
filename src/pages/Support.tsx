@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { 
   Shield, Download, HelpCircle, MessageSquare, 
-  ChevronDown, ChevronUp, Search, CheckCircle, Loader2
+  ChevronDown, ChevronUp, Search, CheckCircle, Loader2,
+  Phone, MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -471,6 +472,26 @@ export default function Support() {
                   )}
                 </Button>
               </form>
+
+              {/* WhatsApp and Call Us Buttons */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                <Button
+                  variant="outline"
+                  className="flex-1 flex items-center justify-center gap-2"
+                  disabled
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 flex items-center justify-center gap-2"
+                  disabled
+                >
+                  <Phone className="w-5 h-5" />
+                  Call Us
+                </Button>
+              </div>
             </div>
           </section>
         </div>

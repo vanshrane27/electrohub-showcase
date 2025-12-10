@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   Shield, MessageSquare, MapPin, RefreshCw, 
   Phone, Mail, Calendar, Clock, User,
-  FileText, Building2, AlertCircle
+  FileText, Building2, AlertCircle, Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,20 @@ interface ContactFormRecord {
   status: string;
 }
 
+interface OrderRecord {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  total_amount: number;
+  status: string;
+  items: any;
+  shipping_address: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 const dealers = [
   { id: 1, name: 'TechWorld Electronics', country: 'India', city: 'Mumbai', address: '123 Marine Drive, Mumbai 400001', phone: '+91 22 1234 5678', email: 'mumbai@techworld.in', type: 'Dealer' },
   { id: 2, name: 'Digital Hub', country: 'India', city: 'Delhi', address: '456 Connaught Place, New Delhi 110001', phone: '+91 11 2345 6789', email: 'delhi@digitalhub.in', type: 'Dealer' },
@@ -42,12 +56,13 @@ const dealers = [
   { id: 10, name: 'Asia Tech', country: 'Singapore', city: 'Singapore', address: '10 Orchard Road, Singapore 238826', phone: '+65 6123 4567', email: 'sg@asiatech.com', type: 'Dealer' },
 ];
 
-type TabType = 'warranties' | 'contacts' | 'dealers';
+type TabType = 'warranties' | 'contacts' | 'orders' | 'dealers';
 
 export default function SupportDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('warranties');
   const [warranties, setWarranties] = useState<WarrantyRecord[]>([]);
   const [contactForms, setContactForms] = useState<ContactFormRecord[]>([]);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -75,6 +90,16 @@ export default function SupportDashboard() {
         throw contactFormsError;
       }
 
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        throw ordersError;
+      }
+
       // Transform warranties data to match the interface
       const transformedWarranties: WarrantyRecord[] = (warrantiesData || []).map(w => ({
         id: w.id,
@@ -96,8 +121,24 @@ export default function SupportDashboard() {
         status: cf.status || 'New',
       }));
 
+      // Transform orders data
+      const transformedOrders: OrderRecord[] = (ordersData || []).map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        customer_name: o.customer_name,
+        customer_email: o.customer_email,
+        customer_phone: o.customer_phone,
+        total_amount: Number(o.total_amount),
+        status: o.status,
+        items: o.items,
+        shipping_address: o.shipping_address,
+        created_at: o.created_at,
+        updated_at: o.updated_at,
+      }));
+
       setWarranties(transformedWarranties);
       setContactForms(transformedContactForms);
+      setOrders(transformedOrders);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -146,6 +187,7 @@ export default function SupportDashboard() {
   const tabs = [
     { id: 'warranties' as TabType, label: 'Product Warranties', icon: Shield, count: warranties.length },
     { id: 'contacts' as TabType, label: 'Contact Forms', icon: MessageSquare, count: contactForms.length },
+    { id: 'orders' as TabType, label: 'Orders', icon: Package, count: orders.length },
     { id: 'dealers' as TabType, label: 'Dealers & Service Centers', icon: MapPin, count: dealers.length },
   ];
 
@@ -177,7 +219,7 @@ export default function SupportDashboard() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-card rounded-xl border border-border p-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-lg">
@@ -197,6 +239,17 @@ export default function SupportDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground">Support Requests</p>
                   <p className="text-2xl font-bold">{contactForms.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Package className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-2xl font-bold">{orders.length}</p>
                 </div>
               </div>
             </div>
@@ -347,6 +400,74 @@ export default function SupportDashboard() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              )}
+
+              {/* Orders Tab */}
+              {activeTab === 'orders' && (
+                <div className="bg-card rounded-xl border border-border overflow-hidden">
+                  {orders.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No orders found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border bg-secondary/50">
+                            <th className="p-4 text-left font-medium">Order Number</th>
+                            <th className="p-4 text-left font-medium">Customer</th>
+                            <th className="p-4 text-left font-medium hidden md:table-cell">Email</th>
+                            <th className="p-4 text-left font-medium">Total</th>
+                            <th className="p-4 text-left font-medium">Status</th>
+                            <th className="p-4 text-left font-medium hidden lg:table-cell">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders.map((order, idx) => (
+                            <tr key={order.id || idx} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <Package className="w-4 h-4 text-primary" />
+                                  <span className="font-mono text-sm font-medium">{order.order_number}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4 text-muted-foreground" />
+                                  {order.customer_name}
+                                </div>
+                              </td>
+                              <td className="p-4 hidden md:table-cell text-muted-foreground text-sm">
+                                {order.customer_email}
+                              </td>
+                              <td className="p-4 font-medium">
+                                ₹{order.total_amount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-4">
+                                <span className={cn(
+                                  'px-2 py-1 rounded-full text-xs font-medium',
+                                  order.status === 'not_dispatched' ? 'bg-warning/20 text-warning' :
+                                  order.status === 'dispatched' ? 'bg-primary/20 text-primary' :
+                                  order.status === 'shipped' ? 'bg-accent/20 text-accent' :
+                                  'bg-success/20 text-success'
+                                )}>
+                                  {order.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </span>
+                              </td>
+                              <td className="p-4 hidden lg:table-cell">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Calendar className="w-4 h-4" />
+                                  {formatDate(order.created_at || '')}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               )}

@@ -16,37 +16,46 @@ export default function Login() {
     password: '',
   });
 
-  const { login, register } = useAuth();
+  const { login, register, resetPassword, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (isLogin) {
-      const result = await login(formData.email, formData.password);
-      if (result.success) {
-        toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
-        // Check if admin
-        if (formData.email === 'admin' && formData.password === 'admin') {
-          navigate('/admin');
+    try {
+      if (isLogin) {
+        const result = await login(formData.email, formData.password);
+        if (result.success) {
+          toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
+          // Check admin status from result or current state
+          const adminStatus = result.isAdmin ?? isAdmin;
+          navigate(adminStatus ? '/admin' : '/dashboard');
         } else {
-          navigate('/dashboard');
+          toast({ title: 'Login failed', description: result.error || 'Invalid email or password', variant: 'destructive' });
         }
       } else {
-        toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
-      }
-    } else {
-      const result = await register(formData.name, formData.email, formData.password);
-      if (result.success) {
-        toast({ title: 'Account created!', description: 'Welcome to NexaTech.' });
-        navigate('/dashboard');
-      } else {
-        toast({ title: 'Registration failed', description: result.error, variant: 'destructive' });
-      }
-    }
+        // Validate password strength
+        if (formData.password.length < 6) {
+          toast({ title: 'Registration failed', description: 'Password must be at least 6 characters long', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
 
-    setIsLoading(false);
+        const result = await register(formData.name, formData.email, formData.password);
+        if (result.success) {
+          toast({ title: 'Account created!', description: 'Welcome to NexaTech. Please check your email to verify your account.' });
+          navigate('/dashboard');
+        } else {
+          toast({ title: 'Registration failed', description: result.error || 'Failed to create account', variant: 'destructive' });
+        }
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      toast({ title: 'Error', description: 'An unexpected error occurred. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -86,14 +95,14 @@ export default function Login() {
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-2">Email / Username</label>
+                <label className="block text-sm font-medium mb-2">Email</label>
                 <input
-                  type={isLogin ? 'text' : 'email'}
+                  type="email"
                   required
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={isLogin ? 'admin or user@example.com' : 'you@example.com'}
+                  placeholder={isLogin ? 'admin@admin.com' : 'you@example.com'}
                 />
               </div>
 
@@ -106,7 +115,7 @@ export default function Login() {
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
                     className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary pr-12"
-                    placeholder={isLogin ? 'admin or password' : 'Create a password'}
+                    placeholder={isLogin ? 'Enter your password' : 'Create a password (min 6 characters)'}
                   />
                   <button
                     type="button"
@@ -120,9 +129,24 @@ export default function Login() {
 
               {isLogin && (
                 <div className="text-right">
-                  <a href="#" className="text-sm text-primary hover:underline">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!formData.email) {
+                        toast({ title: 'Error', description: 'Please enter your email address first', variant: 'destructive' });
+                        return;
+                      }
+                      const result = await resetPassword(formData.email);
+                      if (result.success) {
+                        toast({ title: 'Password reset email sent', description: 'Check your email for password reset instructions.' });
+                      } else {
+                        toast({ title: 'Error', description: result.error || 'Failed to send reset email', variant: 'destructive' });
+                      }
+                    }}
+                    className="text-sm text-primary hover:underline"
+                  >
                     Forgot password?
-                  </a>
+                  </button>
                 </div>
               )}
 
@@ -149,15 +173,6 @@ export default function Login() {
               </p>
             </div>
 
-            {isLogin && (
-              <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
-                <p className="text-xs text-muted-foreground text-center">
-                  <strong>Demo Credentials:</strong><br />
-                  Admin: admin / admin<br />
-                  User: user@example.com / password
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>

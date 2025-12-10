@@ -233,6 +233,83 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          id: string
+          full_name: string | null
+          phone: string | null
+          is_admin: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id: string
+          full_name?: string | null
+          phone?: string | null
+          is_admin?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          full_name?: string | null
+          phone?: string | null
+          is_admin?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          id: string
+          order_number: string
+          customer_name: string
+          customer_email: string
+          customer_phone: string | null
+          total_amount: number
+          status: string
+          items: Json
+          shipping_address: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          order_number: string
+          customer_name: string
+          customer_email: string
+          customer_phone?: string | null
+          total_amount: number | string
+          status?: string
+          items: Json
+          shipping_address?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_number?: string
+          customer_name?: string
+          customer_email?: string
+          customer_phone?: string | null
+          total_amount?: number | string
+          status?: string
+          items?: Json
+          shipping_address?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

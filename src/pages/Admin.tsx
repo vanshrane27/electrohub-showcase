@@ -3,27 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { products as initialProducts, Product } from '@/data/products';
 import { toast } from '@/hooks/use-toast';
 import { 
   Package, ShoppingCart, Plus, Pencil, Trash2, 
-  Check, X, LogOut, LayoutDashboard 
+  Check, X, LogOut, LayoutDashboard, RefreshCw, Loader2, AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-const mockOrders = [
-  { id: 'ORD-001', customer: 'Rahul Sharma', date: '2024-01-15', items: 2, total: 149999, status: 'Pending' },
-  { id: 'ORD-002', customer: 'Priya Patel', date: '2024-01-14', items: 1, total: 74999, status: 'Pending' },
-  { id: 'ORD-003', customer: 'Amit Kumar', date: '2024-01-13', items: 3, total: 24997, status: 'Accepted' },
-  { id: 'ORD-004', customer: 'Sneha Reddy', date: '2024-01-12', items: 1, total: 89999, status: 'Shipped' },
-];
+interface Order {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  total_amount: number;
+  status: 'not_dispatched' | 'dispatched' | 'shipped' | 'delivered';
+  items: any;
+  shipping_address: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 export default function Admin() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -40,6 +56,77 @@ export default function Admin() {
       navigate('/login');
     }
   }, [isAuthenticated, isAdmin, navigate]);
+
+  // Fetch orders from Supabase
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch orders',
+        variant: 'destructive',
+      });
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && isAdmin) {
+      fetchOrders();
+    }
+  }, [isAuthenticated, isAdmin]);
+
+  // Update order status
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      // Validate admin access
+      if (!isAdmin) {
+        toast({
+          title: 'Access Denied',
+          description: 'Only admins can update order status',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state immediately for better UX
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      
+      toast({
+        title: 'Order Updated',
+        description: `Order status updated to ${newStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+      });
+    } catch (error: any) {
+      console.error('Error updating order:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to update order status. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -76,12 +163,6 @@ export default function Admin() {
     toast({ title: 'Product Deleted', description: 'Product has been removed.' });
   };
 
-  const handleAcceptOrder = (orderId: string) => {
-    setOrders(orders.map(o => 
-      o.id === orderId ? { ...o, status: 'Accepted' } : o
-    ));
-    toast({ title: 'Order Accepted', description: `Order ${orderId} has been accepted.` });
-  };
 
   const handleLogout = () => {
     logout();
@@ -116,21 +197,27 @@ export default function Admin() {
               <p className="font-heading text-2xl font-bold">{products.length}</p>
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
-              <p className="text-muted-foreground text-sm">Pending Orders</p>
+              <p className="text-muted-foreground text-sm">Not Dispatched</p>
               <p className="font-heading text-2xl font-bold text-warning">
-                {orders.filter(o => o.status === 'Pending').length}
+                {orders.filter(o => o.status === 'not_dispatched').length}
               </p>
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
-              <p className="text-muted-foreground text-sm">Accepted Orders</p>
-              <p className="font-heading text-2xl font-bold text-success">
-                {orders.filter(o => o.status === 'Accepted').length}
+              <p className="text-muted-foreground text-sm">Dispatched</p>
+              <p className="font-heading text-2xl font-bold text-primary">
+                {orders.filter(o => o.status === 'dispatched').length}
+              </p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <p className="text-muted-foreground text-sm">Shipped</p>
+              <p className="font-heading text-2xl font-bold text-accent">
+                {orders.filter(o => o.status === 'shipped').length}
               </p>
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
               <p className="text-muted-foreground text-sm">Total Revenue</p>
-              <p className="font-heading text-2xl font-bold text-primary">
-                {formatPrice(orders.reduce((sum, o) => sum + o.total, 0))}
+              <p className="font-heading text-2xl font-bold text-success">
+                {formatPrice(orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}
               </p>
             </div>
           </div>
@@ -280,54 +367,79 @@ export default function Admin() {
           {/* Orders Tab */}
           {activeTab === 'orders' && (
             <div className="bg-card rounded-xl border border-border">
-              <div className="p-4 border-b border-border">
+              <div className="p-4 border-b border-border flex items-center justify-between">
                 <h2 className="font-heading font-semibold">Order Management</h2>
+                <Button variant="outline" size="sm" onClick={fetchOrders} disabled={ordersLoading}>
+                  <RefreshCw className={cn('w-4 h-4 mr-2', ordersLoading && 'animate-spin')} />
+                  Refresh
+                </Button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/50">
-                      <th className="p-4 text-left font-medium">Order ID</th>
-                      <th className="p-4 text-left font-medium hidden sm:table-cell">Customer</th>
-                      <th className="p-4 text-left font-medium hidden md:table-cell">Date</th>
-                      <th className="p-4 text-left font-medium">Total</th>
-                      <th className="p-4 text-left font-medium">Status</th>
-                      <th className="p-4 text-right font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(order => (
-                      <tr key={order.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                        <td className="p-4 font-medium">{order.id}</td>
-                        <td className="p-4 hidden sm:table-cell">{order.customer}</td>
-                        <td className="p-4 hidden md:table-cell text-muted-foreground">{order.date}</td>
-                        <td className="p-4">{formatPrice(order.total)}</td>
-                        <td className="p-4">
-                          <span className={cn(
-                            'px-2 py-1 rounded-full text-xs font-medium',
-                            order.status === 'Pending' ? 'bg-warning/20 text-warning' :
-                            order.status === 'Accepted' ? 'bg-success/20 text-success' :
-                            'bg-primary/20 text-primary'
-                          )}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          {order.status === 'Pending' && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptOrder(order.id)}
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Accept
-                            </Button>
-                          )}
-                        </td>
+              {ordersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No orders found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/50">
+                        <th className="p-4 text-left font-medium">Order Number</th>
+                        <th className="p-4 text-left font-medium hidden sm:table-cell">Customer</th>
+                        <th className="p-4 text-left font-medium hidden md:table-cell">Email</th>
+                        <th className="p-4 text-left font-medium">Total</th>
+                        <th className="p-4 text-left font-medium">Status</th>
+                        <th className="p-4 text-left font-medium hidden lg:table-cell">Date</th>
+                        <th className="p-4 text-right font-medium">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {orders.map(order => (
+                        <tr key={order.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                          <td className="p-4 font-medium font-mono text-sm">{order.order_number}</td>
+                          <td className="p-4 hidden sm:table-cell">{order.customer_name}</td>
+                          <td className="p-4 hidden md:table-cell text-muted-foreground text-sm">{order.customer_email}</td>
+                          <td className="p-4">{formatPrice(Number(order.total_amount))}</td>
+                          <td className="p-4">
+                            <Select
+                              value={order.status}
+                              onValueChange={(value: Order['status']) => handleUpdateOrderStatus(order.id, value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="not_dispatched">Not Dispatched</SelectItem>
+                                <SelectItem value="dispatched">Dispatched</SelectItem>
+                                <SelectItem value="shipped">Shipped</SelectItem>
+                                <SelectItem value="delivered">Delivered</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-4 hidden lg:table-cell text-muted-foreground text-sm">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="p-4 text-right">
+                            <span className={cn(
+                              'px-2 py-1 rounded-full text-xs font-medium',
+                              order.status === 'not_dispatched' ? 'bg-warning/20 text-warning' :
+                              order.status === 'dispatched' ? 'bg-primary/20 text-primary' :
+                              order.status === 'shipped' ? 'bg-accent/20 text-accent' :
+                              'bg-success/20 text-success'
+                            )}>
+                              {order.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>
