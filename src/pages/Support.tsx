@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   Shield, Download, HelpCircle, MessageSquare, 
   ChevronDown, ChevronUp, Search, CheckCircle, Loader2,
-  Phone, MessageCircle
+  Phone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -474,22 +474,15 @@ export default function Support() {
               </form>
 
               {/* WhatsApp and Call Us Buttons */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-4">
+              <div className="mt-6">
                 <Button
+                  type="button"
                   variant="outline"
-                  className="flex-1 flex items-center justify-center gap-2"
-                  disabled
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  WhatsApp
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 flex items-center justify-center gap-2"
-                  disabled
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={() => { window.location.href = 'tel:+18884539698'; }}
                 >
                   <Phone className="w-5 h-5" />
-                  Call Us
+                  Call Us: +18884539698
                 </Button>
               </div>
             </div>

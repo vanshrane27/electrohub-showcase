@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
+import { Zap, Mail, Phone, Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -71,13 +71,9 @@ export const Footer = () => {
           <div>
             <h4 className="font-heading font-semibold text-foreground mb-4">Contact Us</h4>
             <ul className="space-y-3">
-              <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4 mt-0.5 text-primary" />
-                <span>123 Tech Park, Silicon Valley, CA 94025</span>
-              </li>
               <li className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary" />
-                <span>+1 (800) NEXA-TECH</span>
+                <span>+1 (888) 453-9698</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 text-primary" />
